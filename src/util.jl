@@ -69,6 +69,10 @@ end
 typealias ContiguousSMatrixColumnView{S1, S2, T, L} SubArray{T,2,SMatrix{S1, S2, T, L},Tuple{Colon,UnitRange{Int64}},true}
 typealias RotMatrix3{T} RotMatrix{3, T, 9}
 
+@inline function fast_column_view{S1, S2, T, L}(data::SMatrix{S1, S2, T, L}, colrange::UnitRange{Int64})
+    ContiguousSMatrixColumnView{S1, S2, T, L}(data, (:, colrange), 0, 1)
+end
+
 # TODO: use fusing broadcast instead of these functions in 0.6, where they don't allocate.
 function sub!(out, a, b)
     @boundscheck length(out) == length(a) || error("size mismatch")

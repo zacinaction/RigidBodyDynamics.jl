@@ -88,20 +88,18 @@ function mass_matrix!{X, M, C}(out::Symmetric{C, Matrix{C}}, state::MechanismSta
 
     for vi in non_root_vertices(state)
         # Hii
-        jointi = edge_to_parent_data(vi)
-        irange = velocity_range(jointi)
+        jointStatei = edge_to_parent_data(vi)
+        irange = velocity_range(jointStatei)
         if length(irange) > 0
             Si = motion_subspace(vi)
-            Ii = crb_inertia(vi)
-            F = Ii * Si
+            F = momentum_matrix(jointStatei.joint, crb_inertia(vi), transform_to_root(vi), configuration(jointStatei))
             istart = first(irange)
             _mass_matrix_part!(out, istart, istart, Si, F)
 
             # Hji, Hij
             vj = parent(vi)
             while (!isroot(vj))
-                jointj = edge_to_parent_data(vj)
-                jrange = velocity_range(jointj)
+                jrange = velocity_range(edge_to_parent_data(vj))
                 if length(jrange) > 0
                     Sj = motion_subspace(vj)
                     jstart = first(jrange)

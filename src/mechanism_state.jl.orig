@@ -252,7 +252,7 @@ end
         vertexUpdateForwardPass = quote
             $vertexUpdateForwardPass
             jointState.motionSubspace = change_base(motion_subspace(jointState.joint, jointState.q), parent_frame(jointState))
-            bodyState.motionSubspace = change_base(motion_subspace(jointState.joint, transform_to_root(vertex), jointState.q), parent_frame(jointState))
+            bodyState.motionSubspace = transform(jointState.motionSubspace, transform_to_root(vertex))
         end
     end
 
@@ -306,8 +306,16 @@ end
     vertex_data(vertex).biasAcceleration
 end
 
+<<<<<<< HEAD
 @inline function motion_subspace{X, M, C}(vertex::TreeVertex{RigidBodyState{M, C}, JointState{X, M, C}})
     vertex_data(vertex).motionSubspace
+=======
+function motion_subspace{X, M, C}(vertex::TreeVertex{RigidBodyState{M, C}, JointState{X, M, C}})
+    @cache_element_get!(vertex_data(vertex).motionSubspace, begin
+        jointState = edge_to_parent_data(vertex)
+        change_base(motion_subspace(jointState.joint, transform_to_root(vertex), jointState.q), parent_frame(jointState))
+    end)
+>>>>>>> more specialized motion_subspace method
 end
 
 @inline function spatial_inertia{X, M, C}(vertex::TreeVertex{RigidBodyState{M, C}, JointState{X, M, C}})
