@@ -381,27 +381,25 @@ function GeometricJacobian{A<:AbstractMatrix}(body::CartesianFrame3D, base::Cart
     GeometricJacobian{A}(body, base, frame, angular, linear)
 end
 
-# MotionSubspace is the return type of the motion_subspace(::Joint, ...) method. Defining it as a
+# Shared between GeometricJacobian and MomentumMatrix
+
+# JointGeometricJacobian is the return type of the motion_subspace(::Joint, ...) method. Defining it as a
 # GeometricJacobian with a view of a 3×6 SMatrix as the underlying data type gets around type
 # instabilities in motion_subspace while still using an isbits type.
 # See https://github.com/tkoolen/RigidBodyDynamics.jl/issues/84.
-typealias MotionSubspaceArrayType{T} ContiguousSMatrixColumnView{3, 6, T, 18}
-typealias MotionSubspace{T} GeometricJacobian{MotionSubspaceArrayType{T}}
-@inline function fast_view_for_motion_subspace{T}(data::SMatrix{3, 6, T, 18}, colrange::UnitRange{Int64})
-    MotionSubspaceArrayType{T}(data, (:, colrange), 0, 1)
-end
-
-@generated function MotionSubspace{N, T}(body::CartesianFrame3D, base::CartesianFrame3D, frame::CartesianFrame3D, angular::SMatrix{3, N, T}, linear::SMatrix{3, N, T})
+# Similar for JointMomentumMatrix
+typealias JointGeometricJacobian{T} GeometricJacobian{ContiguousSMatrixColumnView{3, 6, T, 18}}
+@generated function JointGeometricJacobian{N, T}(body::CartesianFrame3D, base::CartesianFrame3D, frame::CartesianFrame3D, angular::SMatrix{3, N, T}, linear::SMatrix{3, N, T})
     colrange = 1 : N
     if N == 0
-        angularView = fast_view_for_motion_subspace(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
-        linearView = fast_view_for_motion_subspace(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
+        angularView = fast_column_view(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
+        linearView = fast_column_view(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
         return quote
-            MotionSubspace{T}(body, base, frame, $angularView, $linearView)
+            JointGeometricJacobian{T}(body, base, frame, $angularView, $linearView)
         end
     elseif N == 6
         return quote
-            MotionSubspace{T}(body, base, frame, fast_view_for_motion_subspace(angular, $colrange), fast_view_for_motion_subspace(linear, $colrange))
+            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angular, $colrange), fast_column_view(linear, $colrange))
         end
     else
         fillerSize = 6 - N
@@ -409,7 +407,32 @@ end
         return quote
             angularData = hcat(angular, $filler)::SMatrix{3, 6, T, 18}
             linearData = hcat(linear, $filler)::SMatrix{3, 6, T, 18}
-            MotionSubspace{T}(body, base, frame, fast_view_for_motion_subspace(angularData, $colrange), fast_view_for_motion_subspace(linearData, $colrange))
+            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angularData, $colrange), fast_column_view(linearData, $colrange))
+        end
+    end
+end
+
+# TODO: code duplication between JointGeometricJacobian and JointMomentumMatrix
+typealias JointMomentumMatrix{T} MomentumMatrix{ContiguousSMatrixColumnView{3, 6, T, 18}}
+@generated function JointMomentumMatrix{N, T}(frame::CartesianFrame3D, angular::SMatrix{3, N, T}, linear::SMatrix{3, N, T})
+    colrange = 1 : N
+    if N == 0
+        angularView = fast_column_view(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
+        linearView = fast_column_view(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
+        return quote
+            JointMomentumMatrix{T}(frame, $angularView, $linearView)
+        end
+    elseif N == 6
+        return quote
+            JointMomentumMatrix{T}(frame, fast_column_view(angular, $colrange), fast_column_view(linear, $colrange))
+        end
+    else
+        fillerSize = 6 - N
+        filler = fill(NaN, SMatrix{3, fillerSize, T, 3 * fillerSize})
+        return quote
+            angularData = hcat(angular, $filler)::SMatrix{3, 6, T, 18}
+            linearData = hcat(linear, $filler)::SMatrix{3, 6, T, 18}
+            JointMomentumMatrix{T}(frame, fast_column_view(angularData, $colrange), fast_column_view(linearData, $colrange))
         end
     end
 end

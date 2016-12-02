@@ -7,7 +7,7 @@ type JointState{X<:Real, M<:Real, C<:Real}
     afterJointToParent::Transform3D{C}
     twist::Twist{C}
     biasAcceleration::SpatialAcceleration{C}
-    motionSubspace::MotionSubspace{C}
+    motionSubspace:: JointGeometricJacobian{C}
 
     function JointState(joint::Joint{M}, beforeJointToParent::Transform3D{C}, q::VectorSegment{X}, v::VectorSegment{X})
         new(joint, q, v, beforeJointToParent)
@@ -37,7 +37,7 @@ type RigidBodyState{M<:Real, C<:Real}
     transformToWorld::Transform3D{C}
     twist::Twist{C}
     biasAcceleration::SpatialAcceleration{C}
-    motionSubspace::MotionSubspace{C} # in world frame
+    motionSubspace:: JointGeometricJacobian{C} # in world frame
     inertia::SpatialInertia{C}
     crbInertia::SpatialInertia{C}
 
