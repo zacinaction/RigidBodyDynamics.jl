@@ -89,6 +89,12 @@ end
 # joint_acceleration
 # motion_subspace with a transform argument
 
+function motion_subspace{M, C, X}(joint::Joint{M}, toDesiredFrame::Transform3D{C}, q::AbstractVector{X})::JointGeometricJacobian{C}
+    @boundscheck check_num_positions(joint, q)
+    framecheck(toDesiredFrame.from, joint.frameAfter)
+    @rtti_dispatch (QuaternionFloating{M}, Revolute{M}, Prismatic{M}, Fixed{M}) _motion_subspace(joint.jointType, joint.frameAfter, joint.frameBefore, toDesiredFrame, q)
+end
+
 function momentum_matrix{M, C, X}(joint::Joint{M}, crbInertia::SpatialInertia{C}, afterJointToInertia::Transform3D{C}, q::AbstractVector{X})::JointMomentumMatrix{C}
     @boundscheck check_num_positions(joint, q)
     framecheck(afterJointToInertia.from, joint.frameAfter)

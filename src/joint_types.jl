@@ -71,6 +71,15 @@ function _motion_subspace{T<:Real, X<:Real}(
     JointGeometricJacobian(frameAfter, frameBefore, frameAfter, angular, linear)
 end
 
+function _motion_subspace(jt::QuaternionFloating, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, toDesiredFrame::Transform3D, q::AbstractVector)
+    R = toDesiredFrame.rot
+    p = toDesiredFrame.trans
+    S = eltype(typeof(R))
+    angular = [R zeros(SMatrix{3, 3, S})]
+    linear = [hat(p) * R R]
+    ret = JointGeometricJacobian(frameAfter, frameBefore, toDesiredFrame.to, angular, linear)
+end
+
 function _bias_acceleration{T<:Real, X<:Real}(
         jt::QuaternionFloating{T}, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, q::AbstractVector{X}, v::AbstractVector{X})
     S = promote_type(T, X)
@@ -245,13 +254,20 @@ function _motion_subspace(jt::Prismatic, frameAfter::CartesianFrame3D, frameBefo
     JointGeometricJacobian(frameAfter, frameBefore, frameAfter, angular, linear)
 end
 
+function _motion_subspace(jt::Prismatic, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, toDesiredFrame::Transform3D, q::AbstractVector)
+    T = promote_type(eltype(typeof(jt)), eltype(typeof(q)))
+    angular = zeros(SMatrix{3, 1, T})
+    linear = SMatrix{3, 1, T}(toDesiredFrame.rot * jt.translation_axis)
+    JointGeometricJacobian(frameAfter, frameBefore, toDesiredFrame.to, angular, linear)
+end
+
 function _joint_torque!(jt::Prismatic, τ::AbstractVector, q::AbstractVector, joint_wrench::Wrench)
     @inbounds τ[1] = dot(joint_wrench.linear, jt.translation_axis)
     nothing
 end
 
 function _momentum_matrix(jt::Prismatic, crbInertia::SpatialInertia, afterJointToInertia::Transform3D, q::AbstractVector)
-    motionSubspaceLinear = rotate(jt.translation_axis, afterJointToInertia.rot)
+    motionSubspaceLinear = afterJointToInertia.rot * jt.translation_axis
     c = crbInertia.crossPart
     m = crbInertia.mass
     T = promote_type(eltype(typeof(jt)), eltype(typeof(q)))
@@ -300,6 +316,13 @@ function _motion_subspace{T<:Real, X<:Real}(
     JointGeometricJacobian(frameAfter, frameBefore, frameAfter, angular, linear)
 end
 
+function _motion_subspace(jt::Revolute, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, toDesiredFrame::Transform3D, q::AbstractVector)
+    T = promote_type(eltype(typeof(jt)), eltype(typeof(q)))
+    angular = SMatrix{3, 1, T}(toDesiredFrame.rot * jt.rotation_axis)
+    linear = SMatrix{3, 1, T}(cross(toDesiredFrame.trans, angular))
+    JointGeometricJacobian(frameAfter, frameBefore, toDesiredFrame.to, angular, linear)
+end
+
 function _joint_torque!(jt::Revolute, τ::AbstractVector, q::AbstractVector, joint_wrench::Wrench)
     @inbounds τ[1] = dot(joint_wrench.angular, jt.rotation_axis)
     nothing
@@ -307,7 +330,7 @@ end
 
 function _momentum_matrix(jt::Revolute, crbInertia::SpatialInertia, afterJointToInertia::Transform3D, q::AbstractVector)
     T = promote_type(eltype(typeof(jt)), eltype(typeof(q)))
-    motionSubspaceAngular = rotate(jt.rotation_axis, afterJointToInertia.rot)
+    motionSubspaceAngular = afterJointToInertia.rot * jt.rotation_axis
     motionSubspaceLinear = cross(afterJointToInertia.trans, motionSubspaceAngular)
     J = crbInertia.moment
     c = crbInertia.crossPart
@@ -342,6 +365,11 @@ function _motion_subspace{T<:Real, X<:Real}(
         jt::Fixed{T}, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, q::AbstractVector{X})
     S = promote_type(T, X)
     JointGeometricJacobian(frameAfter, frameBefore, frameAfter, zeros(SMatrix{3, 0, S}), zeros(SMatrix{3, 0, S}))
+end
+
+function _motion_subspace(jt::Fixed, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, toDesiredFrame::Transform3D, q::AbstractVector)
+    T = promote_type(eltype(typeof(jt)), eltype(typeof(q)))
+    JointGeometricJacobian(frameAfter, frameBefore, toDesiredFrame.to, zeros(SMatrix{3, 0, T}), zeros(SMatrix{3, 0, T}))
 end
 
 _zero_configuration!(::Fixed, q::AbstractVector) = nothing
