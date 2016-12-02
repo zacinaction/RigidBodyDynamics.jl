@@ -68,13 +68,11 @@ function potential_energy{X, M, C}(state::MechanismState{X, M, C})
 
     for col = 1 : m
         outcol = colstart + col - 1
+        @inbounds Fcol = SVector(mat.angular[1, col], mat.angular[2, col], mat.angular[3, col], mat.linear[1, col], mat.linear[2, col], mat.linear[3, col])
         for row = 1 : n
             outrow = rowstart + row - 1
-            @inbounds out.data[outrow, outcol] = zero(eltype(out))
-            for i = 1 : 3
-                @inbounds out.data[outrow, outcol] += jac.angular[i, row] * mat.angular[i, col]
-                @inbounds out.data[outrow, outcol] += jac.linear[i, row] * mat.linear[i, col]
-            end
+            @inbounds Jcol = SVector(jac.angular[1, row], jac.angular[2, row], jac.angular[3, row], jac.linear[1, row], jac.linear[2, row], jac.linear[3, row])
+            @inbounds out.data[outrow, outcol] = dot(Jcol, Fcol)
         end
     end
  end
