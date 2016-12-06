@@ -380,24 +380,23 @@ end
 # Similar for JointMomentumMatrix
 typealias JointGeometricJacobian{T} GeometricJacobian{ContiguousSMatrixColumnView{3, 6, T, 18}}
 @generated function JointGeometricJacobian{N, T}(body::CartesianFrame3D, base::CartesianFrame3D, frame::CartesianFrame3D, angular::SMatrix{3, N, T}, linear::SMatrix{3, N, T})
-    colrange = 1 : N
     if N == 0
-        angularView = fast_column_view(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
-        linearView = fast_column_view(fill(NaN, SMatrix{3, 6, T, 18}), colrange)
         return quote
-            JointGeometricJacobian{T}(body, base, frame, $angularView, $linearView)
+            angularData = fill(NaN, SMatrix{3, 6, T, 18})
+            linearData = fill(NaN, SMatrix{3, 6, T, 18})
+            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angularData, 1 : N), fast_column_view(linearData, 1 : N))
         end
     elseif N == 6
         return quote
-            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angular, $colrange), fast_column_view(linear, $colrange))
+            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angular, 1 : N), fast_column_view(linear, 1 : N))
         end
     else
         fillerSize = 6 - N
-        filler = fill(NaN, SMatrix{3, fillerSize, T, 3 * fillerSize})
+        L = 3 * fillerSize
         return quote
-            angularData = hcat(angular, $filler)::SMatrix{3, 6, T, 18}
-            linearData = hcat(linear, $filler)::SMatrix{3, 6, T, 18}
-            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angularData, $colrange), fast_column_view(linearData, $colrange))
+            angularData = hcat(angular, fill(NaN, SMatrix{3, $fillerSize, T,$L}))
+            linearData = hcat(linear, fill(NaN, SMatrix{3, $fillerSize, T, $L}))
+            JointGeometricJacobian{T}(body, base, frame, fast_column_view(angularData, 1 : N), fast_column_view(linearData, 1 : N))
         end
     end
 end
