@@ -79,7 +79,8 @@ function potential_energy{X, M, C}(state::MechanismState{X, M, C})
     end
  end
 
-function mass_matrix!{X, M, C}(out::Symmetric{C, Matrix{C}}, state::MechanismState{X, M, C})
+function mass_matrix!{X, M, C}(out::Symmetric{C, Matrix{C}}, state::MechanismState{X, M, C}, updateCache::Bool = true)
+    updateCache && update_cache!(state, Val{(:motionSubspaces, :crbInertias)})
     @boundscheck size(out, 1) == num_velocities(state) || error("mass matrix has wrong size")
     @boundscheck out.uplo == 'U' || error("expected an upper triangular symmetric matrix type as the mass matrix")
     fill!(out.data, zero(C))
@@ -199,8 +200,8 @@ function dynamics_bias!{T, X, M, W}(
         biasAccelerations::Associative{RigidBody{M}, SpatialAcceleration{T}},
         wrenches::Associative{RigidBody{M}, Wrench{T}},
         state::MechanismState{X, M},
-        externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}())
-
+        externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}(), updateCache::Bool = true)
+    updateCache && update_cache!(state, Val{(:biasAccelerations, :motionSubspaces, :inertias)}) # TODO: stop using motion subspaces by implementing dedicated joint_acceleration function?
     bias_accelerations!(biasAccelerations, state)
     newton_euler!(wrenches, state, biasAccelerations, externalWrenches)
     joint_wrenches_and_torques!(torques, wrenches, state)
@@ -212,7 +213,9 @@ function inverse_dynamics!{T, X, M, V, W}(
         accelerations::Associative{RigidBody{M}, SpatialAcceleration{T}},
         state::MechanismState{X, M},
         v̇::AbstractVector{V},
-        externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}())
+        externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}(),
+        updateCache::Bool = true)
+    updateCache && update_cache!(state, Val{(:biasAccelerations, :motionSubspaces, :inertias)}) # TODO: stop using motion subspaces by implementing dedicated joint_acceleration function?
     spatial_accelerations!(accelerations, state, v̇)
     newton_euler!(jointWrenchesOut, state, accelerations, externalWrenches)
     joint_wrenches_and_torques!(torquesOut, jointWrenchesOut, state)
@@ -223,7 +226,6 @@ function inverse_dynamics{X, M, V, W}(
         state::MechanismState{X, M},
         v̇::AbstractVector{V},
         externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{X}}())
-
     T = promote_type(X, M, V, W)
     torques = Vector{T}(num_velocities(state))
     jointWrenches = Dict{RigidBody{M}, Wrench{T}}()
@@ -265,7 +267,7 @@ function joint_accelerations!(out::AbstractVector, massMatrixInversionCache::Sym
     nothing
 end
 
-function joint_accelerations!{T<:Union{Float32, Float64}}(out::AbstractVector{T}, massMatrixInversionCache::Symmetric{T, Matrix{T}},
+function joint_accelerations!{T<:Base.LinAlg.BlasReal}(out::AbstractVector{T}, massMatrixInversionCache::Symmetric{T, Matrix{T}},
         massMatrix::Symmetric{T, Matrix{T}}, biasedTorques::Vector{T})
     @inbounds copy!(out, biasedTorques)
     @inbounds copy!(massMatrixInversionCache.data, massMatrix.data)
@@ -275,11 +277,12 @@ end
 
 function dynamics!{T, X, M, Tau, W}(out::DynamicsResult{T}, state::MechanismState{X, M},
         torques::AbstractVector{Tau} = NullVector{T}(num_velocities(state)),
-        externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}())
-    dynamics_bias!(out.dynamicsBias, out.accelerations, out.jointWrenches, state, externalWrenches)
+        externalWrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}(), updateCache::Bool = true)
+    updateCache && update_cache!(state, Val{(:biasAccelerations, :motionSubspaces, :crbInertias)})
+    dynamics_bias!(out.dynamicsBias, out.accelerations, out.jointWrenches, state, externalWrenches, false)
     @inbounds copy!(out.biasedTorques, out.dynamicsBias)
     sub!(out.biasedTorques, torques, out.dynamicsBias)
-    mass_matrix!(out.massMatrix, state)
+    mass_matrix!(out.massMatrix, state, false)
     joint_accelerations!(out.v̇, out.massMatrixInversionCache, out.massMatrix, out.biasedTorques)
     nothing
 end
