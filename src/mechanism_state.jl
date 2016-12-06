@@ -24,10 +24,10 @@ velocity(state::JointState) = state.v
 configuration_range(state::JointState) = first(parentindexes(state.q))
 velocity_range(state::JointState) = first(parentindexes(state.v))
 parent_frame(state::JointState) = state.beforeJointToParent.to
-transform(state::JointState) = state.beforeJointToParent * joint_transform(state.joint, state.q) # FIXME
-twist(state::JointState) = change_base(joint_twist(state.joint, state.q, state.v), parent_frame(state))
-bias_acceleration(state::JointState) = change_base(bias_acceleration(state.joint, state.q, state.v), parent_frame(state))
-motion_subspace(state::JointState) = change_base(motion_subspace(state.joint, state.q), parent_frame(state))
+# twist(state::JointState) = change_base(joint_twist(state.joint, state.q, state.v), parent_frame(state))
+# transform(state::JointState) = state.beforeJointToParent * joint_transform(state.joint, state.q) # FIXME
+# bias_acceleration(state::JointState) = change_base(bias_acceleration(state.joint, state.q, state.v), parent_frame(state))
+# motion_subspace(state::JointState) = change_base(motion_subspace(state.joint, state.q), parent_frame(state))
 zero_configuration!(state::JointState) = (zero_configuration!(state.joint, state.q))
 rand_configuration!(state::JointState) = (rand_configuration!(state.joint, state.q))
 
@@ -242,7 +242,7 @@ end
             toRoot = transform_to_root(vertex)
             jointBias = jointState.biasAcceleration
             twistWrtWorld = transform(twist_wrt_world(vertex), inv(toRoot)) # TODO
-            jointTwist = twist(jointState)
+            jointTwist = jointState.twist
             jointBias = transform(jointBias, toRoot, twistWrtWorld, jointTwist)
             bodyState.biasAcceleration = parentBias + jointBias
         end
@@ -251,7 +251,7 @@ end
     if desiredStatus.motionSubspaces
         vertexUpdateForwardPass = quote
             $vertexUpdateForwardPass
-            jointState.motionSubspace = change_base(motion_subspace(jointState.joint, jointState.q), parent_frame(jointState))
+            # jointState.motionSubspace = change_base(motion_subspace(jointState.joint, jointState.q), parent_frame(jointState))
             bodyState.motionSubspace = change_base(motion_subspace(jointState.joint, transform_to_root(vertex), jointState.q), parent_frame(jointState))
         end
     end
@@ -353,7 +353,7 @@ function transform_to_root(state::MechanismState, frame::CartesianFrame3D)
     tf
 end
 
-motion_subspace(state::MechanismState, joint::Joint) = motion_subspace(state_vertex(state, joint))
+# motion_subspace(state::MechanismState, joint::Joint) = motion_subspace(state_vertex(state, joint))
 
 for fun in (:twist_wrt_world, :bias_acceleration, :spatial_inertia, :crb_inertia, :momentum, :momentum_rate_bias, :kinetic_energy)
     @eval $fun{X, M, C}(state::MechanismState{X, M, C}, body::RigidBody{M}) = $fun(state_vertex(state, body))

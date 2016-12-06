@@ -90,23 +90,19 @@ function mass_matrix!{X, M, C}(out::Symmetric{C, Matrix{C}}, state::MechanismSta
         # Hii
         jointStatei = edge_to_parent_data(vi)
         irange = velocity_range(jointStatei)
-        if length(irange) > 0
-            Si = motion_subspace(vi)
-            F = momentum_matrix(jointStatei.joint, crb_inertia(vi), transform_to_root(vi), configuration(jointStatei))
-            istart = first(irange)
-            _mass_matrix_part!(out, istart, istart, Si, F)
+        Si = motion_subspace(vi)
+        F = momentum_matrix(jointStatei.joint, crb_inertia(vi), transform_to_root(vi), configuration(jointStatei))
+        istart = first(irange)
+        _mass_matrix_part!(out, istart, istart, Si, F)
 
-            # Hji, Hij
-            vj = parent(vi)
-            while (!isroot(vj))
-                jrange = velocity_range(edge_to_parent_data(vj))
-                if length(jrange) > 0
-                    Sj = motion_subspace(vj)
-                    jstart = first(jrange)
-                    _mass_matrix_part!(out, jstart, istart, Sj, F)
-                end
-                vj = parent(vj)
-            end
+        # Hji, Hij
+        vj = parent(vi)
+        while (!isroot(vj))
+            jrange = velocity_range(edge_to_parent_data(vj))
+            Sj = motion_subspace(vj)
+            jstart = first(jrange)
+            _mass_matrix_part!(out, jstart, istart, Sj, F)
+            vj = parent(vj)
         end
     end
 end

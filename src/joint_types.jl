@@ -292,7 +292,7 @@ end
 
 flip_direction(jt::Revolute) = Revolute(-jt.rotation_axis)
 
-function _joint_transform{T<:Real, X<:Real}(
+@inline function _joint_transform{T<:Real, X<:Real}(
         jt::Revolute{T}, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, q::AbstractVector{X})
     S = promote_type(T, X)
     @inbounds θ = q[1]

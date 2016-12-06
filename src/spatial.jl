@@ -101,29 +101,19 @@ end
 
 function transform{I, T}(inertia::SpatialInertia{I}, t::Transform3D{T})::SpatialInertia{promote_type(I, T)}
     framecheck(t.from, inertia.frame)
-    S = promote_type(I, T)
-
-    if t.from == t.to
-        return convert(SpatialInertia{S}, inertia)
-    elseif inertia.mass == zero(I)
-        return zero(SpatialInertia{S}, t.to)
-    else
-        J = inertia.moment
-        m = inertia.mass
-        c = inertia.crossPart
-
-        R = t.rot
-        p = t.trans
-
-        cnew = R * c
-        Jnew = hat_squared(cnew)
-        cnew += m * p
-        Jnew -= hat_squared(cnew)
-        mInv = inv(m)
-        Jnew *= mInv
-        Jnew += R * J * R'
-        return SpatialInertia{S}(t.to, Jnew, cnew, m)
-    end
+    J = inertia.moment
+    m = inertia.mass
+    c = inertia.crossPart
+    R = t.rot
+    p = t.trans
+    cnew = R * c
+    Jnew = hat_squared(cnew)
+    cnew += m * p
+    Jnew -= hat_squared(cnew)
+    mInv = inv(m)
+    Jnew /= m
+    Jnew += R * J * R'
+    SpatialInertia(t.to, Jnew, cnew, m)
 end
 
 function rand{T}(::Type{SpatialInertia{T}}, frame::CartesianFrame3D)
