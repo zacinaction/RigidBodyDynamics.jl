@@ -29,12 +29,7 @@ name(frame::CartesianFrame3D) = get(frame_names, frame.id, "anonymous")
 show(io::IO, frame::CartesianFrame3D) = print(io, "CartesianFrame3D: \"$(name(frame))\" (id = $(frame.id))")
 
 # enable/disable frame checks
-if isdefined(Main, :RIGID_BODY_DYNAMICS_RELEASE)
-    framecheck(f1::CartesianFrame3D, f2::CartesianFrame3D) = nothing
-else
-    framecheck(f1::CartesianFrame3D, f2::CartesianFrame3D) = f1 != f2 && throw(ArgumentError(("$f1 doesn't match $f2")))
-end
-
+framecheck(f1::CartesianFrame3D, f2::CartesianFrame3D) = (@boundscheck f1 == f2; nothing)
 
 # Transform between frames
 immutable Transform3D{T<:Real}
