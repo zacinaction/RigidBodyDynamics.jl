@@ -265,7 +265,11 @@ flip_direction(jt::Revolute) = Revolute(-jt.rotation_axis)
 
 function _joint_transform{T<:Real, X<:Real}(
         jt::Revolute{T}, frameAfter::CartesianFrame3D, frameBefore::CartesianFrame3D, q::AbstractVector{X})
-    @inbounds rot = RotMatrix(AngleAxis(q[1], jt.rotation_axis[1], jt.rotation_axis[2], jt.rotation_axis[3])) # TODO: ask for angleaxis constructor with an SVector as the axis
+    S = promote_type(T, X)
+    @inbounds θ = q[1]
+    s, c = sin(θ), cos(θ)
+    ωHat = hat(jt.rotation_axis)
+    rot = RotMatrix(eye(SMatrix{3, 3, S}) + ωHat * s + ωHat^2 * (one(c) - c)) # Rodrigues' formula. TODO: notify Rotations maintainers
     Transform3D(frameAfter, frameBefore, rot)
 end
 
