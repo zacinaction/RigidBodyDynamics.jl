@@ -200,3 +200,43 @@ function angular_velocity_in_body(quat::Quat, quat_derivative::AbstractVector)
      -q.z  q.y -q.x  q.w]
     2 * (MInv * quat_derivative)
 end
+
+function perpendicular_vector(vec::SVector{3})
+    T = eltype(vec)
+
+    # find indices of the two elements of vec with the largest absolute values:
+    absvec = abs(vec)
+    ind1 = indmax(absvec) # index of largest element
+    absvec2 = @SVector [ifelse(i == ind1, typemin(T), absvec[i]) for i = 1 : 3] # set largest element to typemin
+    ind2 = indmax(absvec2) # index of second-largest element
+
+    # perp[ind1] = -vec[ind2], perp[ind2] = vec[ind1], set remaining element to zero:
+    perp = @SVector [ifelse(i == ind1, -vec[ind2], ifelse(i == ind2, vec[ind1], zero(T))) for i = 1 : 3]
+end
+
+# TODO: contribute to Rotations.jl?
+Rotations.AngleAxis(from::AbstractVector, to::AbstractVector) = Rotations.AngleAxis(SVector{3}(from), SVector{3}(to))
+function Rotations.AngleAxis(from::SVector{3}, to::SVector{3})
+    normfrom = norm(from)
+    normto = norm(to)
+    normprod = normfrom * normto
+    T = typeof(normprod)
+    normprod < eps(T) && throw(ArgumentError("input vectors need to have nonzero norm"))
+    cosϕ = clamp(dot(from, to) / normprod, -one(T), one(T))
+    ϕ = acos(cosϕ)
+
+    ret = if ϕ < eps(T)
+         # 'from' and 'to' are aligned
+        eye(AngleAxis{Float64})
+    else
+        axis = cross(from, to)
+        normsquared = dot(axis, axis)
+        if normsquared < 10 * eps(T)^2
+            # 'from' and 'to' point in opposite directions.
+            # find axis that is perpendicular to 'from' and 'to'
+            maxnormvec = normfrom > normto ? from : to
+            axis = perpendicular_vector(maxnormvec)
+        end
+        AngleAxis(ϕ, axis[1], axis[2], axis[3]) # note: normalization of axis happens in AngleAxis constructor
+    end
+end
