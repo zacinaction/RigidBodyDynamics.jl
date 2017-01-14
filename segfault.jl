@@ -1,41 +1,40 @@
 module Segfault
 using StaticArrays
 
-typealias ContiguousSMatrixColumnView{S1, S2, T, L} SubArray{T,2,SMatrix{S1, S2, T, L},Tuple{Colon,UnitRange{Int64}},true}
+# typealias for typeof(view(rand(SMatrix{S1, S2, T, L}), :, 1:0)):
+typealias ViewType{S1, S2, T, L} SubArray{T,2,SMatrix{S1, S2, T, L},Tuple{Colon,UnitRange{Int64}},true}
 
-immutable WrenchMatrix{A<:AbstractMatrix}
-    angular::A
+immutable ArrayHolder{A<:AbstractMatrix}
+    a::A
 end
 
-typealias WrenchSubspace{T} WrenchMatrix{ContiguousSMatrixColumnView{3, 6, T, 18}}
+typealias SpecificArrayHolder{T} ArrayHolder{ViewType{3, 6, T, 18}}
 
-abstract JointType{T<:Real}
+immutable Foo{T} end
 
-immutable QuaternionFloating{T} <: JointType{T} end
-
-type Joint{T<:Real}
-    jointType::JointType{T}
+type FooHolder{T<:Real}
+    foo::Foo{T}
 end
 
-function smatrix3x6view(mat::SMatrix{3, 0}) # mat must not have concrete type
+function smatrix3x6view(mat::SMatrix{3, 1}) # mat's type must not be concrete
     T = eltype(mat)
     data = fill(NaN, SMatrix{3, 6, T})
     ret = view(data, :, 1 : 0)
 end
 
-function _constraint_wrench_subspace{T}(::QuaternionFloating{T})
-    angular = zeros(SMatrix{3, 0, T})
-    WrenchMatrix(smatrix3x6view(angular))
+function _bar{T}(::Foo{T})
+    a = zeros(SMatrix{3, 1, T})
+    ArrayHolder(smatrix3x6view(a))
 end
 
-function constraint_wrench_subspace{M}(joint::Joint{M})::WrenchSubspace{M}
-    _constraint_wrench_subspace(joint.jointType::QuaternionFloating{M})
+function bar{M}(fooHolder::FooHolder{M})::SpecificArrayHolder{M} # return type annotation required
+    _bar(fooHolder.foo)
 end
 
 end # module
 
-joints = (Segfault.Joint(Segfault.QuaternionFloating{Float64}()),)
-for joint in joints
-    T = Segfault.constraint_wrench_subspace(joint)
-    println(length(T.angular))
+fooHolders = (Segfault.FooHolder(Segfault.Foo{Float64}()),)
+for fooHolder in fooHolders
+    arrayHolder = Segfault.bar(fooHolder) # call to bar must occur in for loop
+    println(length(arrayHolder.a))
 end
