@@ -278,11 +278,11 @@ function _linearized_constraint_error!(jt::Prismatic, δ::AbstractVector, jointT
     p = jointTransform.trans
     # FIXME: this is for translation along the z axis
     @inbounds begin
-        δ[1] = (R[2, 3] - R[3, 2]) / 2
-        δ[2] = (R[3, 1] - R[1, 3]) / 2
-        δ[3] = (R[1, 2] - R[2, 1]) / 2
-        δ[4] = R[1, 3] * p[3] - R[3, 3] * p[1]
-        δ[5] = R[2, 3] * p[3] - R[3, 3] * p[2]
+        δ[1] = (R[3, 2] - R[2, 3]) / 2
+        δ[2] = (R[1, 3] - R[3, 1]) / 2
+        δ[3] = (R[2, 1] - R[1, 2]) / 2
+        δ[4] = R[3, 3] * p[1] - R[1, 3] * p[3]
+        δ[5] = R[3, 3] * p[2] - R[2, 3] * p[3]
     end
     nothing
 end
@@ -339,11 +339,11 @@ function _linearized_constraint_error!(jt::Revolute, δ::AbstractVector, jointTr
     p = jointTransform.trans
     # FIXME: this is for rotation about the z axis
     @inbounds begin
-        δ[1] = R[2, 3]
-        δ[2] = -R[1, 3]
-        δ[3] = R[1, 3] * p[3] - R[3, 3] * p[1]
-        δ[4] = R[2, 3] * p[3] - R[3, 3] * p[2]
-        δ[5] = -R[2, 1] * (R[2, 1] * p[3] - R[3, 1] * p[2]) - R[2, 2] * (R[2, 2] * p[3] - R[3, 2] * p[2])
+        δ[1] = -R[2, 3]
+        δ[2] = R[1, 3]
+        δ[3] = R[3, 3] * p[1] - R[1, 3] * p[3]
+        δ[4] = R[3, 3] * p[2] - R[2, 3] * p[3]
+        δ[5] = R[2, 1] * (R[2, 1] * p[3] - R[3, 1] * p[2]) + R[2, 2] * (R[2, 2] * p[3] - R[3, 2] * p[2])
     end
     nothing
 end
@@ -400,12 +400,12 @@ function _linearized_constraint_error!(jt::Fixed, δ::AbstractVector, jointTrans
     R = jointTransform.rot
     p = jointTransform.trans
     @inbounds begin
-        δ[1] = (R[2, 3] - R[3, 2]) / 2
-        δ[2] = (R[3, 1] - R[1, 3]) / 2
-        δ[3] = (R[1, 2] - R[2, 1]) / 2
-        δ[4] = (R[1, 2] * p[2] + R[1, 3] * p[3] - R[2, 2] * p[1] - R[3, 3] * p[1]) / 2
-        δ[5] = (R[2, 1] * p[1] - R[1, 1] * p[2] + R[2, 3] * p[3] - R[3, 3] * p[2]) / 2
-        δ[6] = (R[3, 1] * p[1] - R[2, 2] * p[3] - R[1, 1] * p[3] + R[3, 2] * p[2]) / 2
+        δ[1] = (R[3, 2] - R[2, 3]) / 2
+        δ[2] = (R[1, 3] - R[3, 1]) / 2
+        δ[3] = (R[2, 1] - R[1, 2]) / 2
+        δ[4] = -(R[1, 2] * p[2] + R[1, 3] * p[3] - R[2, 2] * p[1] - R[3, 3] * p[1]) / 2
+        δ[5] = -(R[2, 1] * p[1] - R[1, 1] * p[2] + R[2, 3] * p[3] - R[3, 3] * p[2]) / 2
+        δ[6] = -(R[3, 1] * p[1] - R[2, 2] * p[3] - R[1, 1] * p[3] + R[3, 2] * p[2]) / 2
     end
     nothing
 end
