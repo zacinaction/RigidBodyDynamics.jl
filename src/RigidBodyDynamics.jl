@@ -2,39 +2,6 @@ __precompile__()
 
 module RigidBodyDynamics
 
-using Base.Random
-using StaticArrays
-using Rotations
-using LightXML
-using DocStringExtensions
-using Compat
-import Base: *, +, /, -
-import Compat.Iterators: filter
-import Compat.Iterators: flatten
-
-const noalloc_doc = """This method does its computation in place, performing no dynamic memory allocation."""
-
-include("graphs.jl")
-include("util.jl")
-include("third_party_addendum.jl")
-
-include("frames.jl")
-include("spatial.jl")
-include("rigid_body.jl")
-include("joint_types.jl")
-include("joint.jl")
-include("cache_element.jl")
-
-using .Graphs
-include("mechanism.jl")
-include("mechanism_manipulation.jl")
-include("mechanism_state.jl")
-include("dynamics_result.jl")
-include("mechanism_algorithms.jl")
-include("parse_urdf.jl")
-include("ode_integrators.jl")
-include("simulate.jl")
-
 export
     # types
     CartesianFrame3D,
@@ -105,6 +72,8 @@ export
     bias_acceleration,
     spatial_inertia,
     spatial_inertia!,
+    add_contact_point!,
+    contact_points,
     crb_inertia,
     setdirty!,
     add_body_fixed_frame!,
@@ -155,5 +124,44 @@ export
     simulate,
     # macros
     @framecheck
+
+using Base.Random
+using StaticArrays
+using Rotations
+using LightXML
+using DocStringExtensions
+using Compat
+import Base: *, +, /, -
+import Compat.Iterators: filter
+import Compat.Iterators: flatten
+
+const noalloc_doc = """This method does its computation in place, performing no dynamic memory allocation."""
+
+include("graphs.jl")
+include("util.jl")
+include("third_party_addendum.jl")
+include("cache_element.jl")
+
+include("frames.jl")
+include("spatial.jl")
+include("contact.jl")
+
+include("joint_types.jl")
+include("joint.jl")
+
+using .Contact
+include("rigid_body.jl")
+
+using .Graphs
+include("mechanism.jl")
+include("mechanism_manipulation.jl")
+include("mechanism_state.jl")
+include("dynamics_result.jl")
+include("mechanism_algorithms.jl")
+include("parse_urdf.jl")
+include("ode_integrators.jl")
+include("simulate.jl")
+
+
 
 end # module
