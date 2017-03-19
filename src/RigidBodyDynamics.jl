@@ -34,6 +34,7 @@ export
     frame_after,
     add_frame!,
     transform,
+    point_velocity,
     newton_euler,
     torque,
     joint_torque!,

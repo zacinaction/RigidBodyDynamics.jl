@@ -17,7 +17,8 @@ export normal_force,
     friction_model,
     num_states,
     reset!,
-    dynamics!
+    dynamics!,
+    contact_dynamics!
 
 export HuntCrossleyModel,
     hunt_crossley_hertz
@@ -61,7 +62,7 @@ end
 
 function normal_force(model::HuntCrossleyModel, z, ż)
     zn = z^model.n
-    f = -model.λ * zn * ż - model.k * zn # (2) in Marhefka, Orin
+    f = model.λ * zn * ż + model.k * zn # (2) in Marhefka, Orin (note: z is penetration, returning repelling force)
 end
 
 # Friction models
@@ -84,8 +85,8 @@ function reset!(state::ViscoelasticCoulombState)
     fill!(state.tangential_displacement.v, 0)
 end
 
-function friction_force{T}(state::ViscoelasticCoulombState{T}, fnormal::T, tangential_velocity::FreeVector3D)
-    model = state.model
+function friction_force{T}(model::ViscoelasticCoulombModel{T}, state::ViscoelasticCoulombState{T},
+        fnormal::T, tangential_velocity::FreeVector3D)
     μ = model.μ
     k = model.k
     b = model.b
@@ -105,15 +106,33 @@ function friction_force{T}(state::ViscoelasticCoulombState{T}, fnormal::T, tange
     end
 end
 
-function dynamics!{T}(ẋ, state::ViscoelasticCoulombState{T}, ftangential::FreeVector3D)
+function dynamics!{T}(ẋ::AbstractVector{T}, model::ViscoelasticCoulombModel{T}, state::ViscoelasticCoulombState{T}, ftangential::FreeVector3D)
     # TODO: type of ẋ?
-    model = state.model
     k = model.k
     b = model.b
-    x = state.x
-    ẋ .= -(k * x + ftangential) / b
+    x = state.tangential_displacement
+    ẋ .= (-(k * x + ftangential) / b).v
 end
 
 @compat const DefaultContactPoint{T} = ContactPoint{T,SoftContactModel{HuntCrossleyModel{T},ViscoelasticCoulombModel{T}}}
+
+# TODO: generalize:
+function contact_dynamics!(contact_state_deriv::AbstractVector, contact_state::ViscoelasticCoulombState,
+        model::SoftContactModel, penetration::Number, velocity::FreeVector3D, normal::FreeVector3D)
+    z = penetration
+    force = if z > 0
+        ż = -dot(velocity, normal) # penetration velocity
+        fnormal = normal_force(normal_force_model(model), z, ż)
+        fnormal = max(fnormal, zero(fnormal))
+        tangential_velocity = velocity + ż * normal
+        ftangential = friction_force(friction_model(model), contact_state, fnormal, tangential_velocity)
+        Contact.dynamics!(contact_state_deriv, friction_model(model), contact_state, ftangential)
+        fnormal * normal + ftangential
+    else
+        reset!(contact_state)
+        contact_state_deriv .= 0
+        zero(normal)
+    end
+end
 
 end

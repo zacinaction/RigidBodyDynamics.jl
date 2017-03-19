@@ -145,9 +145,12 @@ for VectorType in (:FreeVector3D, :Point3D)
         Base.convert{V}(::Type{$VectorType{V}}, p::$VectorType{V}) = p
         Base.convert{V}(::Type{$VectorType{V}}, p::$VectorType) = $VectorType(p.frame, convert(V, p.v))
 
+        Base.zero(p::$VectorType) = $VectorType(p.frame, zero(p.v))
+
         (/){S<:Number}(p::$VectorType, s::S) = $VectorType(p.frame, p.v / s)
         (*){S<:Number}(p::$VectorType, s::S) = $VectorType(p.frame, p.v * s)
         (*){S<:Number}(s::S, p::$VectorType) = $VectorType(p.frame, s * p.v)
+        (-)(p::$VectorType) = $VectorType(p.frame, -p.v)
 
         Random.rand{T}(::Type{$VectorType}, ::Type{T}, frame::CartesianFrame3D) = $VectorType(frame, rand(SVector{3, T}))
         Base.show(io::IO, p::$VectorType) = print(io, "$($(string(VectorType))) in \"$(name(p.frame))\": $(p.v)")

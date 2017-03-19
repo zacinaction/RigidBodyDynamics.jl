@@ -38,7 +38,7 @@ immutable MechanismState{X<:Number, M<:Number, C<:Number}
     bias_accelerations_wrt_world::Vector{CacheElement{SpatialAcceleration{C}}}
     inertias::Vector{CacheElement{SpatialInertia{C}}}
     crb_inertias::Vector{CacheElement{SpatialInertia{C}}}
-    contact_states::Vector{Vector{ViscoelasticCoulombState{X}}} # TODO: generalize, consider moving to separate type
+    contact_states::Vector{Vector{ViscoelasticCoulombState{X, VectorSegment{X}}}} # TODO: generalize, consider moving to separate type
 
     function (::Type{MechanismState{X, M, C}}){X<:Number, M<:Number, C<:Number}(mechanism::Mechanism{M})
         nb = num_bodies(mechanism)
@@ -75,7 +75,7 @@ immutable MechanismState{X<:Number, M<:Number, C<:Number}
         bias_accelerations_wrt_world = [CacheElement{SpatialAcceleration{C}}() for i = 1 : nb]
         inertias = [CacheElement{SpatialInertia{C}}() for i = 1 : nb]
         crb_inertias = [CacheElement{SpatialInertia{C}}() for i = 1 : nb]
-        contact_states = [Vector{ViscoelasticCoulombState{X}}() for i = 1 : nb]
+        contact_states = [Vector{ViscoelasticCoulombState{X, VectorSegment{X}}}() for i = 1 : nb]
         startind = 1
         for body in bodies(mechanism), point in contact_points(body)
             model = friction_model(contact_model(point))
