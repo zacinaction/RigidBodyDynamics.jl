@@ -15,6 +15,7 @@ type DynamicsResult{M<:Number, T<:Number}
     constraintbias::Vector{T}
     v̇::Vector{T}
     λ::Vector{T}
+    ṡ::Vector{T}
     accelerations::Dict{RigidBody{M}, SpatialAcceleration{T}}
     jointwrenches::Dict{RigidBody{M}, Wrench{T}}
     # see solve_dynamics! for meaning of the following variables:
@@ -35,6 +36,7 @@ type DynamicsResult{M<:Number, T<:Number}
         constraintbias = Vector{T}(nconstraints)
         v̇ = Vector{T}(nv)
         λ = Vector{T}(nconstraints)
+        ṡ = Vector{T}(num_additional_states(mechanism))
         accelerations = Dict{RigidBody{M}, SpatialAcceleration{T}}()
         sizehint!(accelerations, num_bodies(mechanism))
         jointwrenches = Dict{RigidBody{M}, Wrench{T}}()
@@ -44,7 +46,7 @@ type DynamicsResult{M<:Number, T<:Number}
         z = Vector{T}(nv)
         Y = Matrix{T}(nconstraints, nv)
 
-        new{M, T}(massmatrix, dynamicsbias, constraintjacobian, constraintbias, v̇, λ, accelerations, jointwrenches, L, A, z, Y)
+        new{M, T}(massmatrix, dynamicsbias, constraintjacobian, constraintbias, v̇, λ, ṡ, accelerations, jointwrenches, L, A, z, Y)
     end
 end
 

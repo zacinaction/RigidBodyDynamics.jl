@@ -596,6 +596,7 @@ given joint configuration vector ``q``, joint velocity vector ``v``, and
 function dynamics!{T, X, M, Tau, W}(result::DynamicsResult{T}, state::MechanismState{X, M},
         torques::AbstractVector{Tau} = NullVector{T}(num_velocities(state)),
         externalwrenches::Associative{RigidBody{M}, Wrench{W}} = NullDict{RigidBody{M}, Wrench{T}}())
+    fill!(result.ṡ, zero(T)) # TODO
     dynamics_bias!(result.dynamicsbias, result.accelerations, result.jointwrenches, state, externalwrenches)
     mass_matrix!(result.massmatrix, state)
     constraint_jacobian_and_bias!(state, result.constraintjacobian, result.constraintbias)
