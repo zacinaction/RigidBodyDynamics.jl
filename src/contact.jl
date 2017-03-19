@@ -12,6 +12,10 @@ export NormalForceModel,
 
 export normal_force,
     friction_force,
+    contact_model,
+    normal_force_model,
+    friction_model,
+    num_states,
     reset!,
     dynamics!
 
@@ -33,11 +37,14 @@ immutable SoftContactModel{N <: NormalForceModel, F <: FrictionModel}
     normal_force_model::N
     friction_model::F
 end
+normal_force_model(model::SoftContactModel) = model.normal_force_model
+friction_model(model::SoftContactModel) = model.friction_model
 
 type ContactPoint{T, M <: SoftContactModel}
     location::Point3D{SVector{3, T}}
     model::M
 end
+contact_model(point::ContactPoint) = point.model
 
 # Normal contact models
 immutable HuntCrossleyModel{T} <: NormalForceModel{T}
