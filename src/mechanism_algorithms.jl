@@ -333,8 +333,8 @@ function newton_euler!{T, X, M, W}(
     mechanism = state.mechanism
     for joint in tree_joints(mechanism)
         body = successor(joint, mechanism)
-        wrench = newton_euler(state, body, accelerations[vertex_index(body)])
-        out[vertex_index(body)] = wrench - externalwrenches[vertex_index(body)]
+        index = vertex_index(body)
+        out[index] = newton_euler(state, body, accelerations[index]) - externalwrenches[index]
     end
 end
 
@@ -478,6 +478,41 @@ function constraint_jacobian_and_bias!(state::MechanismState, constraintjacobian
     end
 end
 
+function detect_contact(position::Point3D) # TODO
+    T = eltype(position)
+    separation = position.v[3]
+    normal = FreeVector3D(position.frame, SVector(zero(T), zero(T), one(T)))
+    separation, normal
+end
+
+function contact_dynamics!{X, M, C, T}(result::DynamicsResult{M, T}, state::MechanismState{X, M, C})
+    # TODO: minor allocations
+    frame = root_frame(state.mechanism)
+    for body in bodies(state.mechanism)
+        wrench = zero(Wrench{T}, frame)
+        points = contact_points(body)
+        if !isempty(points)
+            body_to_root = transform_to_root(state, body)
+            twist = twist_wrt_world(state, body)
+            state_derivs = contact_state_derivatives(result, body)
+            states = contact_states(state, body)
+            for i = 1 : length(points)
+                @inbounds c = points[i]
+                contact_state = states[i]
+                contact_state_deriv = state_derivs[i]
+                position = body_to_root * c.location
+                velocity = point_velocity(twist, position)
+                separation, normal = detect_contact(position) # TODO
+                penetration = -separation
+                model = contact_model(c)
+                force = Contact.contact_dynamics!(contact_state_deriv, contact_state, model, penetration, velocity, normal)
+                wrench += Wrench(position, force)
+            end
+        end
+        set_contact_wrench!(result, body, wrench)
+    end
+end
+
 function dynamics_solve!(result::DynamicsResult, τ::AbstractVector)
     # version for general scalar types
     # TODO: make more efficient
@@ -595,8 +630,11 @@ given joint configuration vector ``q``, joint velocity vector ``v``, and
 function dynamics!{T, X, M, Tau, W}(result::DynamicsResult{T}, state::MechanismState{X, M},
         torques::AbstractVector{Tau} = ConstVector(zero(T), num_velocities(state)),
         externalwrenches::AbstractVector{Wrench{W}} = ConstVector(zero(Wrench{T}, root_frame(state.mechanism)), num_bodies(state.mechanism)))
-    fill!(result.ṡ, zero(T)) # TODO
-    dynamics_bias!(result.dynamicsbias, result.accelerations, result.jointwrenches, state, externalwrenches)
+    contact_dynamics!(result, state)
+    for i in eachindex(result.totalwrenches) # TODO: dot syntax on 0.6
+        result.totalwrenches[i] = externalwrenches[i] + result.contactwrenches[i]
+    end
+    dynamics_bias!(result.dynamicsbias, result.accelerations, result.jointwrenches, state, result.totalwrenches)
     mass_matrix!(result.massmatrix, state)
     constraint_jacobian_and_bias!(state, result.constraintjacobian, result.constraintbias)
     dynamics_solve!(result, torques)
