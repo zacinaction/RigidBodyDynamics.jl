@@ -61,6 +61,7 @@ export
     num_positions,
     num_velocities,
     num_additional_states,
+    num_bodies,
     configuration,
     configuration_range,
     velocity,

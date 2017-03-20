@@ -190,8 +190,10 @@ out_edges{V, E}(vertex::V, tree::SpanningTree{V, E}) = tree.outedges[vertex_inde
 root(tree::SpanningTree) = tree.root
 edge_to_parent{V, E}(vertex::V, tree::SpanningTree{V, E}) = tree.inedges[vertex_index(vertex)]
 edges_to_children{V, E}(vertex::V, tree::SpanningTree{V, E}) = out_edges(vertex, tree)
-tree_index{V, E}(edge::E, tree::SpanningTree{V, E}) = tree.edge_tree_indices[edge_index(edge)]
-tree_index{V, E}(vertex::V, tree::SpanningTree{V, E}) = vertex == root(tree) ? 1 : tree_index(edge_to_parent(vertex, tree), tree) + 1
+@inline tree_index{V, E}(edge::E, tree::SpanningTree{V, E}) = tree.edge_tree_indices[edge_index(edge)]
+@inline function tree_index{V, E}(vertex::V, tree::SpanningTree{V, E})
+    vertex == root(tree) ? 1 : tree_index(edge_to_parent(vertex, tree), tree) + 1
+end
 
 function SpanningTree{V, E}(g::DirectedGraph{V, E}, root::V, edges::AbstractVector{E})
     n = num_vertices(g)

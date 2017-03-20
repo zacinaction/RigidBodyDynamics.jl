@@ -248,8 +248,8 @@ function gravitational_spatial_acceleration(mechanism::Mechanism)
     SpatialAcceleration(frame, frame, frame, zeros(SVector{3, eltype(mechanism)}), mechanism.gravitationalAcceleration.v)
 end
 
-tree_index(joint::Joint, mechanism::Mechanism) = Graphs.tree_index(joint, mechanism.tree)
-tree_index(body::RigidBody, mechanism::Mechanism) = Graphs.tree_index(body, mechanism.tree)
+@inline tree_index(joint::Joint, mechanism::Mechanism) = Graphs.tree_index(joint, mechanism.tree)
+@inline tree_index(body::RigidBody, mechanism::Mechanism) = Graphs.tree_index(body, mechanism.tree)
 
 function constraint_jacobian_structure(mechanism::Mechanism)
     # TODO: move to MechanismState
