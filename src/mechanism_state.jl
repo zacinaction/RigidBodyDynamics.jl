@@ -179,6 +179,18 @@ function setdirty!(state::MechanismState)
     end
 end
 
+"""
+$(SIGNATURES)
+
+Reset all contact state variables.
+"""
+function reset_contact_state!(state::MechanismState)
+    for states in state.contact_states
+        for state in states
+            reset!(state)
+        end
+    end
+end
 
 """
 $(SIGNATURES)
@@ -194,6 +206,7 @@ function zero_configuration!(state::MechanismState)
     for joint in tree_joints(state.mechanism)
         zero_configuration!(joint, configuration(state, joint))
     end
+    reset_contact_state!(state)
     setdirty!(state)
 end
 
@@ -205,6 +218,7 @@ Zero the velocity vector ``v``. Invalidates cache variables.
 function zero_velocity!(state::MechanismState)
     X = eltype(state.v)
     fill!(state.v,  zero(X))
+    reset_contact_state!(state)
     setdirty!(state)
 end
 
@@ -229,6 +243,7 @@ function rand_configuration!(state::MechanismState)
     for joint in tree_joints(state.mechanism)
         rand_configuration!(joint, configuration(state, joint))
     end
+    reset_contact_state!(state)
     setdirty!(state)
 end
 
@@ -240,6 +255,7 @@ Invalidates cache variables.
 """
 function rand_velocity!(state::MechanismState)
     rand!(state.v)
+    reset_contact_state!(state)
     setdirty!(state)
 end
 
@@ -292,11 +308,10 @@ end
 
 for (fun, veclength) in [(:configuration, :num_positions), (:velocity, :num_velocities)]
     @eval begin
-        funstring = string($fun)
         """
         $(SIGNATURES)
 
-        Return the part of the `Mechanism`'s $funstring vector associated with
+        Return the part of the `Mechanism`'s $(string($fun)) vector associated with
         the joints along `path`.
         """
         function $fun{X, M, C}(state::MechanismState{X, M, C}, path::TreePath{RigidBody{M}, Joint{M}})
@@ -327,6 +342,7 @@ Invalidates cache variables.
 """
 function set_configuration!(state::MechanismState, joint::Joint, q::AbstractVector)
     configuration(state, joint)[:] = q
+    reset_contact_state!(state)
     setdirty!(state)
 end
 
@@ -338,6 +354,7 @@ Invalidates cache variables.
 """
 function set_velocity!(state::MechanismState, joint::Joint, v::AbstractVector)
     velocity(state, joint)[:] = v
+    reset_contact_state!(state)
     setdirty!(state)
 end
 
@@ -374,9 +391,12 @@ end
 function set!(state::MechanismState, x::AbstractVector)
     nq = num_positions(state)
     nv = num_velocities(state)
-    length(x) == nq + nv || error("wrong size")
+    ns = num_additional_states(state)
+    length(x) == nq + nv + ns || error("wrong size")
+    start = 1
     @inbounds copy!(state.q, 1, x, 1, nq)
-    @inbounds copy!(state.v, 1, x, nq + 1, nv)
+    @inbounds copy!(state.v, 1, x, start += nq, nv)
+    @inbounds copy!(state.s, 1, x, start += nv, ns)
     setdirty!(state)
 end
 
