@@ -2,6 +2,7 @@ module Contact
 
 using RigidBodyDynamics # TODO: modularize more
 using StaticArrays
+using ForwardDiff
 using Compat
 
 import RigidBodyDynamics: VectorSegment
@@ -208,5 +209,81 @@ end
 @compat const DefaultContactPoint{T} = ContactPoint{T,SoftContactModel{HuntCrossleyModel{T},ViscoelasticCoulombModel{T}}}
 @compat const DefaultSoftContactState{T} = SoftContactState{Void, ViscoelasticCoulombState{VectorSegment{T}}}
 @compat const DefaultSoftContactStateDeriv{T} = SoftContactStateDeriv{Void, ViscoelasticCoulombStateDeriv{VectorSegment{T}}}
+
+
+# Contact detection
+type Box3D{T}
+    frame::CartesianFrame3D
+    halfdims::SVector{3, T}
+end
+Base.eltype{T}(::Type{Box3D{T}}) = T
+
+function point_inside(c::Box3D, p::Point3D)
+    # no allocations
+    @framecheck c.frame p.frame
+    all(abs.(p.v) .<= c.halfdims)
+end
+
+function _closest_point_on_surface_inside(c::Box3D, p::Point3D)
+    # no allocations
+    @framecheck c.frame p.frame
+    v = p.v
+    maxdiff = v - c.halfdims
+    mindiff = v + c.halfdims
+
+    dmax = abs.(maxdiff)
+    dmin = abs.(mindiff)
+
+    maxind = indmin(dmax)
+    minind = indmin(dmin)
+
+    coord, ind = ifelse(dmax[maxind] <= dmin[minind], (c.halfdims[maxind], maxind), (-c.halfdims[minind], minind))
+    vec = if ind == 1
+        SVector(coord, v[2], v[3])
+    elseif ind == 2
+        SVector(v[1], coord, v[3])
+    else
+        SVector(v[1], v[2], coord)
+    end
+    Point3D(p.frame, vec)
+end
+
+function _closest_point_on_surface_outside(c::Box3D, p::Point3D)
+    # no allocations
+    @framecheck c.frame p.frame
+    temp = max.(-c.halfdims, p.v)
+    vec = min.(temp, c.halfdims)
+    Point3D(p.frame, vec)
+end
+
+function closest_point_on_surface(c::Box3D, p::Point3D)
+    # no allocations
+    point_inside(c, p) ? _closest_point_on_surface_inside(c, p) : _closest_point_on_surface_outside(c, p)
+end
+
+function detect_contact(c::Box3D, p::Point3D)
+    # no allocations
+    @framecheck c.frame p.frame
+
+    frame = p.frame
+    T = eltype(p)
+    x = ForwardDiff.Dual(p.v[1], one(T), zero(T), zero(T))
+    y = ForwardDiff.Dual(p.v[2], zero(T), one(T), zero(T))
+    z = ForwardDiff.Dual(p.v[3], zero(T), zero(T), one(T))
+    pdiff = Point3D(frame, SVector(x, y, z))
+
+    if point_inside(c, p)
+        closestdiff = _closest_point_on_surface_inside(c, p)
+        Δdiff = closestdiff - pdiff
+    else
+        closestdiff = _closest_point_on_surface_outside(c, p)
+        Δdiff = pdiff - closestdiff
+    end
+    closest = Point3D(frame, ForwardDiff.value.(pdiff.v))
+    grad = ForwardDiff.partials(dot(Δdiff, Δdiff))
+    gradnorm = normalize(SVector(grad[1], grad[2], grad[3]))
+    outward_normal = FreeVector3D(frame, gradnorm)
+    closest, outward_normal
+end
 
 end
