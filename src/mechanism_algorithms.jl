@@ -478,17 +478,11 @@ function constraint_jacobian_and_bias!(state::MechanismState, constraintjacobian
     end
 end
 
-function detect_contact(position::Point3D) # TODO
-    T = eltype(position)
-    separation = position.v[3]
-    normal = FreeVector3D(position.frame, SVector(zero(T), zero(T), one(T)))
-    separation, normal
-end
-
 function contact_dynamics!{X, M, C, T}(result::DynamicsResult{M, T}, state::MechanismState{X, M, C})
-    # TODO: minor allocations
-    frame = root_frame(state.mechanism)
-    for body in bodies(state.mechanism)
+    mechanism = state.mechanism
+    root = root_body(mechanism)
+    frame = default_frame(root)
+    for body in bodies(mechanism)
         wrench = zero(Wrench{T}, frame)
         points = contact_points(body)
         if !isempty(points)
@@ -498,15 +492,22 @@ function contact_dynamics!{X, M, C, T}(result::DynamicsResult{M, T}, state::Mech
             states = contact_states(state, body)
             for i = 1 : length(points)
                 @inbounds c = points[i]
-                contact_state = states[i]
-                contact_state_deriv = state_derivs[i]
-                position = body_to_root * c.location
-                velocity = point_velocity(twist, position)
-                separation, normal = detect_contact(position) # TODO
-                penetration = -separation
-                model = contact_model(c)
-                force = Contact.contact_dynamics!(contact_state_deriv, contact_state, model, penetration, velocity, normal)
-                wrench += Wrench(position, force)
+                pos = body_to_root * position(c)
+                for box in state.environment.boxes
+                    tf = frame_definition(root, box.frame)
+                    point = inv(tf) * point
+                    if point_inside(box, point)
+                        closest, normal = Contact.detect_contact(box, point)
+                        penetration = norm(point - closest)
+                        contact_state = states[i]
+                        contact_state_deriv = state_derivs[i]
+                        velocity = point_velocity(twist, pos)
+                        model = contact_model(c)
+                        force = Contact.contact_dynamics!(contact_state_deriv, contact_state,
+                            model, penetration, velocity, normal)
+                        wrench += Wrench(pos, force)
+                    end
+                end
             end
         end
         set_contact_wrench!(result, body, wrench)

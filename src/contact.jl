@@ -11,14 +11,18 @@ import RigidBodyDynamics: VectorSegment
 export SoftContactModel,
     SoftContactState,
     SoftContactStateDeriv,
-    ContactPoint
+    ContactPoint,
+    ContactEnvironment,
+    Box3D
 
 # interface functions
 export num_states,
-    location,
+    position,
     contact_model,
     contact_dynamics!,
-    reset!
+    reset!,
+    point_inside,
+    detect_contact
 
 # specific models
 export HuntCrossleyModel,
@@ -91,10 +95,10 @@ zero!(deriv::SoftContactStateDeriv) = (zero!(friction_state_deriv(deriv)); zero!
 
 ## ContactPoint
 type ContactPoint{T, M <: SoftContactModel}
-    location::Point3D{SVector{3, T}}
+    position::Point3D{SVector{3, T}}
     model::M
 end
-location(point::ContactPoint) = point.location
+position(point::ContactPoint) = point.position
 contact_model(point::ContactPoint) = point.model
 
 function contact_dynamics!(state_deriv::SoftContactStateDeriv, state::SoftContactState,
@@ -212,6 +216,7 @@ end
 
 
 # Contact detection
+# TODO: should probably move this somewhere else
 type Box3D{T}
     frame::CartesianFrame3D
     halfdims::SVector{3, T}
@@ -285,5 +290,14 @@ function detect_contact(c::Box3D, p::Point3D)
     outward_normal = FreeVector3D(frame, gradnorm)
     closest, outward_normal
 end
+
+
+# ContactEnvironment
+type ContactEnvironment{T}
+    boxes::Vector{Box3D{T}}
+    ContactEnvironment() = new(Box3D{T}[])
+end
+
+Base.push!(environment::ContactEnvironment, box::Box3D) = push!(environment.boxes, box)
 
 end

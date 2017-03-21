@@ -149,7 +149,7 @@ function change_default_frame!(body::RigidBody, newDefaultFrame::CartesianFrame3
             body.inertia = Nullable(transform(spatial_inertia(body), oldToNew))
         end
         for point in contact_points(body)
-            point.location = oldToNew * point.location
+            point.position = oldToNew * point.position
         end
     end
 end
@@ -160,8 +160,8 @@ $(SIGNATURES)
 Add a new contact point to the rigid body
 """
 function add_contact_point!{T}(body::RigidBody{T}, point::DefaultContactPoint{T})
-    tf = fixed_transform(body, point.location.frame, default_frame(body))
-    point.location = tf * point.location
+    tf = fixed_transform(body, point.position.frame, default_frame(body))
+    point.position = tf * point.position
     push!(body.contact_points, point)
     nothing
 end

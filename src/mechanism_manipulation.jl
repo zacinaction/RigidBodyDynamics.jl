@@ -261,6 +261,8 @@ function maximal_coordinates(mechanism::Mechanism)
     ret, newfloatingjoints, bodymap, jointmap
 end
 
+add_environment_primitive!(mechanism::Mechanism, box::Box3D) = push!(mechanism.environment, box)
+
 """
 $(SIGNATURES)
 
